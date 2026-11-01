@@ -1,0 +1,25 @@
+[project]
+name = "era-adjust"
+version = "0.1.0"
+description = "NHL era adjustment: every season's scoring environment against the season before it"
+readme = "README.md"
+authors = [
+    { name = "casc", email = "cruidadengv8@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=2.0",
+    "puckscrape @ git+https://github.com/CascV8/Puckscrape.git",
+]
+
+[project.scripts]
+era-adjust = "era_adjust:main"
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
