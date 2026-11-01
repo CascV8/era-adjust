@@ -32,7 +32,7 @@ uv run era-adjust build                               # re-download (finished se
 ```python
 from era_adjust import adjust, table
 
-adjust(1981, goals=92, assists=120, to=2025)["adj_goals"]   # 70.6
+adjust(1981, goals=92, assists=120, to=2025)["adj_goals"]   # 70.7
 table().loc[2005, ["gpg", "gpg_change_pct", "goal_factor_vs_prev"]]
 ```
 
