@@ -49,6 +49,31 @@ Seasons can be written `2024`, `2024-25` or `20242025`. A bare year is the seaso
 | `games_per_team` | schedule length (most games any team played) |
 | `partial` | the season under way; its numbers move until it ends |
 
+## NHLe by season
+
+`data/nhle_factors.csv` holds NHLe factors (NHL points per league point) for 46 leagues, season by
+season from 2010-11, from the [NHLe](https://github.com/CascV8/NHLe) network (`training/seasons.py`).
+Each league's network factor can move from season to season by that season's crossover players
+(shrunk toward the league's level: the fit puts the typical season-to-season move at about 5%).
+For the NCAA, OHL, WHL and QMJHL it can also step from 2025-26 on, when CHL players got to keep NCAA eligibility.
+That step has a ±15% prior and only moves as far as the post-change seasons show. With one season so far
+(and the 2026 World Juniors still thin in the data) it is about ×1.00 for the NCAA, ×1.07 OHL,
+×0.98 WHL and ×1.15 QMJHL, each about ±11–14%: not distinguishable from no change yet.
+
+```
+uv run era-adjust nhle ohl 2023-24 -p 102 --gp 68 --to 2025   # OHL points as NHL points, in 2025-26 scoring
+uv run era-adjust nhle-table ncaa ohl whl qmjhl --from 2020
+uv run era-adjust build-nhle                                   # re-download from the NHLe repo (--source for a local csv)
+```
+
+```python
+from era_adjust import nhle
+nhle("ohl", 2023, points=102, gp=68, to=2025)["per82"]
+```
+
+The factor gives NHL points in the *same* season's NHL; `--to` multiplies by the NHL's points per
+team-game ratio to restate them in another season. Seasons after the table use its last season.
+
 ## Caveats
 
 - Assists were awarded sparingly before the 1930s (0.4–0.6 assists per goal in the earliest seasons,

@@ -1,13 +1,14 @@
-"""NHL era adjustment: every season compared to the season before it."""
+"""NHL era adjustment: every season compared to the season before it, and season-by-season NHLe."""
 
 import argparse
 
 import pandas as pd
 
-from . import adjust as _adjust, data, factors
+from . import adjust as _adjust, data, factors, nhle_factors as _nhle
 from .adjust import adjust, previous_season, table
+from .nhle_factors import nhle
 
-__all__ = ["adjust", "previous_season", "table", "main"]
+__all__ = ["adjust", "nhle", "previous_season", "table", "main"]
 
 
 def _season(text: str) -> int:
@@ -53,6 +54,41 @@ def cmd_adjust(args):
           + (f", schedule factor {r['schedule_factor']:.3f}" if args.schedule else ""))
 
 
+def cmd_build_nhle(args):
+    df = _nhle.build(args.source)
+    print(f"{df.league.nunique()} leagues, {data.season_label(int(df.season.min()))} to "
+          f"{data.season_label(int(df.season.max()))} -> {_nhle.NHLE_CSV}")
+
+
+def cmd_nhle_table(args):
+    df = _nhle.factors()
+    if args.leagues:
+        df = df[df.league.isin([lg.lower() for lg in args.leagues])]
+        if df.empty:
+            raise SystemExit(f"no such league; leagues: {', '.join(_nhle.leagues())}")
+    if args.start is not None:
+        df = df[df.season >= args.start]
+    if args.end is not None:
+        df = df[df.season <= args.end]
+    wide = df.pivot(index="league", columns="season", values="factor")
+    wide.columns = [f"{s % 100:02d}-{(s + 1) % 100:02d}" for s in wide.columns]
+    with pd.option_context("display.max_rows", None, "display.width", 250, "display.float_format", "{:.3f}".format):
+        print(wide.to_string())
+    if (df.season >= _nhle.RULE_CHANGE).any() and df.league.isin(["ncaa", "ohl", "whl", "qmjhl"]).any():
+        print(f"NCAA/OHL/WHL/QMJHL from {data.season_label(_nhle.RULE_CHANGE)} include the rule-change step")
+
+
+def cmd_nhle(args):
+    r = _nhle.nhle(args.league, args.season, args.points, gp=args.gp, to=args.to, per=args.per)
+    gp = f" in {r['gp']:g} GP" if r["gp"] else ""
+    print(f"{r['league'].upper()} {r['season']}: {r['points']:g} P{gp}, NHLe factor {r['factor']:.3f}")
+    print(f"NHLe ({r['season']} NHL): {r['nhle']:.1f} P")
+    if r["to"]:
+        print(f"in {r['to']} NHL scoring: {r['adj_nhle']:.1f} P (era factor {r['era_factor']:.3f})")
+    if r["gp"]:
+        print(f"per {args.per:g} games: {r[f'per{args.per:g}']:.1f} P")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="era-adjust", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -76,6 +112,25 @@ def main(argv=None):
     a.add_argument("--to", type=_season, help="target season (default: the previous season)")
     a.add_argument("--schedule", action="store_true", help="also scale to the target season's games per team")
     a.set_defaults(func=cmd_adjust)
+
+    bn = sub.add_parser("build-nhle", help="fetch the season-by-season NHLe table (data/nhle_factors.csv)")
+    bn.add_argument("--source", help="a local factors_by_season.csv or URL (default: the NHLe repo)")
+    bn.set_defaults(func=cmd_build_nhle)
+
+    nt = sub.add_parser("nhle-table", help="print NHLe factors by league and season")
+    nt.add_argument("leagues", nargs="*", help="league keys (ohl, ncaa, shl...); default all")
+    nt.add_argument("--from", dest="start", type=_season)
+    nt.add_argument("--to", dest="end", type=_season)
+    nt.set_defaults(func=cmd_nhle_table)
+
+    n = sub.add_parser("nhle", help="a league season's points as NHL points (optionally in another NHL season's scoring)")
+    n.add_argument("league")
+    n.add_argument("season", type=_season)
+    n.add_argument("-p", "--points", type=float, required=True)
+    n.add_argument("--gp", type=float)
+    n.add_argument("--to", type=_season, help="restate in this NHL season's scoring")
+    n.add_argument("--per", type=float, default=82, help="games to scale to with --gp (default 82)")
+    n.set_defaults(func=cmd_nhle)
 
     args = p.parse_args(argv)
     args.func(args)
