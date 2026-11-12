@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NHLe by League</title>
+<style>
+:root {
+  --surface-0: #f5f5f3; --surface-1: #fcfcfb; --border: #e3e2dd;
+  --text-primary: #1d1d1b; --text-secondary: #5c5b55; --text-muted: #85847c;
+  --grid: #ebeae6; --axis: #c9c8c1; --accent: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --s7: #6250d6; --s8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-0: #121211; --surface-1: #1a1a19; --border: #2e2e2c;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e85;
+    --grid: #262624; --axis: #45443f; --accent: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211; --surface-1: #1a1a19; --border: #2e2e2c;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e85;
+  --grid: #262624; --axis: #45443f; --accent: #3987e5;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  --s7: #9085e9; --s8: #e66767;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.sub { color: var(--text-secondary); margin: 0 0 20px; max-width: 70ch; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; background: transparent;
+  color: var(--text-secondary); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.chart { position: relative; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tick { fill: var(--text-muted); font-size: 11px; }
+.endlabel { fill: var(--text-primary); font-size: 12px; font-weight: 600; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  min-width: 150px; display: none; z-index: 2; }
+.tip b { display: block; margin-bottom: 4px; }
+.tip div { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.tip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.tip .v { font-variant-numeric: tabular-nums; }
+.note { color: var(--text-muted); font-size: 12px; margin: 12px 0 0; }
+details { margin-top: 20px; }
+summary { cursor: pointer; color: var(--text-secondary); }
+.tablewrap { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; width: 100%; }
+th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-secondary); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>NHLe by league, <span style="white-space:nowrap">2010-11 to 2025-26</span></h1>
+  <p class="sub">NHL points per league point, season by season, from the NHLe network.
+    <strong>Era-adjusted</strong> restates every season in 2025-26 NHL scoring (× the NHL's points per
+    team-game ratio); <strong>Same season</strong> is the raw factor in that season's own NHL.</p>
+  <div class="card">
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Scale">
+        <button type="button" data-mode="adj" aria-pressed="true">Era-adjusted</button>
+        <button type="button" data-mode="raw" aria-pressed="false">Same season</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+    <p class="note">CHL = OHL, WHL and QMJHL combined (geometric mean weighted by crossover players).
+      Hollow points: from 2025-26 the NCAA and CHL factors include a step for the rule change letting
+      CHL players keep NCAA eligibility — one season of data so far, so treat them as provisional.</p>
+  </div>
+  <details>
+    <summary>Table view</summary>
+    <div class="tablewrap"><table id="table"></table></div>
+  </details>
+</main>
+<script>
+const D = {"ref": "2025-26", "seasons": ["2010-11", "2011-12", "2012-13", "2013-14", "2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"], "ruleChange": "2025-26", "leagues": [{"key": "chl", "name": "CHL", "adj": [0.1345, 0.1405, 0.14, 0.1374, 0.142, 0.1421, 0.1397, 0.1286, 0.1263, 0.1268, 0.1256, 0.1188, 0.1193, 0.1205, 0.1231, 0.1295], "raw": [0.1201, 0.1224, 0.122, 0.12, 0.124, 0.1224, 0.123, 0.1221, 0.1217, 0.1218, 0.1179, 0.1199, 0.1215, 0.1203, 0.12, 0.1295], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true]}, {"key": "liiga", "name": "Liiga", "adj": [0.4644, 0.4841, 0.4922, 0.4738, 0.4824, 0.4935, 0.4702, 0.4343, 0.4107, 0.428, 0.4468, 0.4253, 0.4053, 0.4107, 0.419, 0.4194], "raw": [0.4148, 0.4215, 0.4287, 0.414, 0.4211, 0.425, 0.414, 0.4125, 0.3959, 0.4113, 0.4195, 0.4291, 0.4128, 0.41, 0.4085, 0.4194], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, {"key": "khl", "name": "KHL", "adj": [0.7011, 0.7144, 0.7325, 0.7403, 0.7355, 0.729, 0.7355, 0.7031, 0.6976, 0.6817, 0.6806, 0.6391, 0.6129, 0.6159, 0.6508, 0.6261], "raw": [0.6263, 0.622, 0.6379, 0.6468, 0.642, 0.6279, 0.6475, 0.6678, 0.6725, 0.655, 0.639, 0.6448, 0.6242, 0.6148, 0.6345, 0.6261], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, {"key": "ncaa", "name": "NCAA", "adj": [0.2345, 0.2407, 0.2424, 0.2437, 0.2373, 0.2423, 0.2357, 0.2243, 0.2164, 0.2148, 0.2229, 0.2125, 0.2068, 0.2132, 0.2193, 0.2109], "raw": [0.2094, 0.2096, 0.2111, 0.2129, 0.2071, 0.2087, 0.2075, 0.2131, 0.2086, 0.2064, 0.2093, 0.2144, 0.2106, 0.2129, 0.2138, 0.2109], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true]}, {"key": "shl", "name": "SHL", "adj": [0.6219, 0.6679, 0.6643, 0.624, 0.6498, 0.6513, 0.6257, 0.5791, 0.5664, 0.5944, 0.6115, 0.5761, 0.5564, 0.581, 0.592, 0.576], "raw": [0.5555, 0.5815, 0.5785, 0.5452, 0.5672, 0.561, 0.5509, 0.55, 0.546, 0.5711, 0.5741, 0.5812, 0.5666, 0.58, 0.5772, 0.576], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, {"key": "ushl", "name": "USHL", "adj": [0.146, 0.1445, 0.1441, 0.1378, 0.1424, 0.145, 0.1443, 0.1311, 0.1289, 0.1289, 0.132, 0.1274, 0.1264, 0.126, 0.1308, 0.1293], "raw": [0.1304, 0.1258, 0.1255, 0.1204, 0.1243, 0.1249, 0.127, 0.1245, 0.1243, 0.1238, 0.124, 0.1286, 0.1287, 0.1258, 0.1275, 0.1293], "stepped": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}]};
+const N = D.seasons.length;
+let mode = "adj";
+const chart = document.getElementById("chart"), tip = document.getElementById("tip");
+const color = i => `var(--s${i + 1})`;
+const short = s => s.slice(2);  // 2010-11 -> 10-11
+
+document.getElementById("legend").innerHTML = D.leagues.map((l, i) =>
+  `<span><i style="background:${color(i)}"></i>${l.name}</span>`).join("");
+
+function niceMax(v) {
+  const step = v > 0.5 ? 0.1 : 0.05;
+  return Math.ceil(v * 1.06 / step) * step;
+}
+
+function draw() {
+  const W = Math.max(chart.clientWidth, 300), narrow = W < 560;
+  const H = narrow ? 320 : 400;
+  const m = { t: 12, r: narrow ? 52 : 64, b: 28, l: 40 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const vals = D.leagues.flatMap(l => l[mode]);
+  const yMax = niceMax(Math.max(...vals));
+  const x = i => m.l + (N === 1 ? iw / 2 : i * iw / (N - 1));
+  const y = v => m.t + ih - v / yMax * ih;
+  const step = yMax > 0.5 ? 0.1 : 0.05;
+  let g = "";
+  for (let v = 0; v <= yMax + 1e-9; v += step) {
+    g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text class="tick" x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(2)}</text>`;
+  }
+  g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)" stroke-width="1"/>`;
+  const every = narrow ? 3 : 1;
+  D.seasons.forEach((s, i) => {
+    if (i % every === 0 || i === N - 1)
+      g += `<text class="tick" x="${x(i)}" y="${m.t + ih + 18}" text-anchor="middle">${short(s)}</text>`;
+  });
+  // rule-change marker
+  const rc = D.seasons.indexOf(D.ruleChange);
+  if (rc > 0) g += `<line x1="${x(rc)}" x2="${x(rc)}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--axis)" stroke-dasharray="3 4"/>`;
+  // lines
+  D.leagues.forEach((l, li) => {
+    const pts = l[mode].map((v, i) => `${x(i)},${y(v)}`).join(" ");
+    g += `<polyline points="${pts}" fill="none" stroke="${color(li)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    l[mode].forEach((v, i) => {
+      if (l.stepped[i]) g += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="var(--surface-1)" stroke="${color(li)}" stroke-width="2"/>`;
+    });
+  });
+  // end labels, nudged apart
+  const ends = D.leagues.map((l, li) => ({ li, name: l.name, y: y(l[mode][N - 1]) })).sort((a, b) => a.y - b.y);
+  const gap = 14;
+  for (let k = 1; k < ends.length; k++) if (ends[k].y - ends[k - 1].y < gap) ends[k].y = ends[k - 1].y + gap;
+  const over = ends.length ? ends[ends.length - 1].y - (m.t + ih) : 0;
+  if (over > 0) ends.forEach(e => e.y -= over);
+  ends.forEach(e => {
+    g += `<text class="endlabel" x="${x(N - 1) + 10}" y="${e.y + 4}">${e.name}</text>`;
+  });
+  // hover layer
+  g += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--text-muted)" stroke-width="1" visibility="hidden"/>`;
+  g += `<g id="dots"></g>`;
+  g += `<rect id="hit" x="${m.l - 10}" y="${m.t}" width="${iw + 20}" height="${ih}" fill="transparent"/>`;
+  const old = chart.querySelector("svg"); if (old) old.remove();
+  chart.insertAdjacentHTML("afterbegin",
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="NHLe by league and season">${g}</svg>`);
+  const svg = chart.querySelector("svg"), xh = svg.querySelector("#xh"), dots = svg.querySelector("#dots");
+  const hit = svg.querySelector("#hit");
+  function at(ev) {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(N - 1, Math.round((px - m.l) / iw * (N - 1))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    dots.innerHTML = D.leagues.map((l, li) =>
+      `<circle cx="${x(i)}" cy="${y(l[mode][i])}" r="4.5" fill="${color(li)}" stroke="var(--surface-1)" stroke-width="2"/>`).join("");
+    const rows = D.leagues.map((l, li) => ({ l, li, v: l[mode][i] })).sort((a, b) => b.v - a.v);
+    tip.innerHTML = `<b>${D.seasons[i]}</b>` + rows.map(r =>
+      `<div><span><i style="background:${color(r.li)}"></i>${r.l.name}${r.l.stepped[i] ? "*" : ""}</span><span class="v">${r.v.toFixed(3)}</span></div>`).join("")
+      + (rows.some(r => r.l.stepped[i]) ? `<div style="color:var(--text-muted);margin-top:4px">* includes the rule-change step</div>` : "");
+    tip.style.display = "block";
+    const cx = x(i) * r.width / W, tw = tip.offsetWidth;
+    tip.style.left = (cx + 14 + tw > r.width ? cx - tw - 14 : cx + 14) + "px";
+    tip.style.top = "8px";
+  }
+  hit.addEventListener("pointermove", at);
+  hit.addEventListener("pointerdown", at);
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; xh.setAttribute("visibility", "hidden"); dots.innerHTML = ""; });
+}
+
+function table() {
+  const head = `<tr><th>Season</th>${D.leagues.map(l => `<th>${l.name}</th>`).join("")}</tr>`;
+  const body = D.seasons.map((s, i) =>
+    `<tr><td>${s}</td>${D.leagues.map(l => `<td>${l[mode][i].toFixed(3)}${l.stepped[i] ? "*" : ""}</td>`).join("")}</tr>`).join("");
+  document.getElementById("table").innerHTML = head + body;
+}
+
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".seg button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+  draw(); table();
+}));
+new ResizeObserver(() => draw()).observe(chart);
+draw(); table();
+</script>
+</body>
+</html>

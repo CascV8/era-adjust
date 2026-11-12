@@ -4,7 +4,7 @@ import argparse
 
 import pandas as pd
 
-from . import adjust as _adjust, data, factors, nhle_factors as _nhle
+from . import adjust as _adjust, data, factors, nhle_chart as _chart, nhle_factors as _nhle
 from .adjust import adjust, previous_season, table
 from .nhle_factors import nhle
 
@@ -89,6 +89,19 @@ def cmd_nhle(args):
         print(f"per {args.per:g} games: {r[f'per{args.per:g}']:.1f} P")
 
 
+def cmd_nhle_chart(args):
+    df = _chart.series(args.leagues or None, ref=args.ref)
+    t = _chart.wide(df, "factor" if args.raw else "nhle")
+    which = "same-season NHL" if args.raw else f"{data.season_label(df.attrs['ref'])} NHL scoring"
+    print(f"NHLe (NHL points per league point), {which}:")
+    with pd.option_context("display.max_rows", None, "display.width", 250, "display.float_format", "{:.3f}".format):
+        print(t.to_string())
+    if df.stepped.any():
+        print(f"from {data.season_label(_nhle.RULE_CHANGE)} the NCAA/CHL values include the rule-change step")
+    if not args.no_html:
+        print(f"chart -> {_chart.write(args.leagues or None, ref=args.ref, out=args.out)}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="era-adjust", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -131,6 +144,14 @@ def main(argv=None):
     n.add_argument("--to", type=_season, help="restate in this NHL season's scoring")
     n.add_argument("--per", type=float, default=82, help="games to scale to with --gp (default 82)")
     n.set_defaults(func=cmd_nhle)
+
+    c = sub.add_parser("nhle-chart", help="era-adjusted NHLe by league over time: table + interactive HTML chart")
+    c.add_argument("leagues", nargs="*", help=f"league keys; 'chl' = OHL+WHL+QMJHL (default: {' '.join(_chart.DEFAULT_LEAGUES)})")
+    c.add_argument("--ref", type=_season, help="NHL season whose scoring everything is restated in (default: latest complete)")
+    c.add_argument("--raw", action="store_true", help="print the same-season factors instead")
+    c.add_argument("--out", help=f"HTML path (default: {_chart.OUT.relative_to(data.ROOT)})")
+    c.add_argument("--no-html", action="store_true", help="table only")
+    c.set_defaults(func=cmd_nhle_chart)
 
     args = p.parse_args(argv)
     args.func(args)
