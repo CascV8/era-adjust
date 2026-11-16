@@ -74,6 +74,29 @@ nhle("ohl", 2023, points=102, gp=68, to=2025)["per82"]
 The factor gives NHL points in the *same* season's NHL; `--to` multiplies by the NHL's points per
 team-game ratio to restate them in another season. Seasons after the table use its last season.
 
+### Era-adjusted NHLe over time
+
+```
+uv run era-adjust nhle-chart                         # CHL, Liiga, KHL, NCAA, SHL, USHL in 2025-26 NHL scoring
+uv run era-adjust nhle-chart ohl whl qmjhl ahl --ref 2015
+uv run era-adjust nhle-chart --raw --no-html         # same-season factors, table only
+```
+
+Prints the table and writes `reports/nhle_by_season.html`, an interactive chart (hover for every
+league's value that season, toggle era-adjusted / same-season, table view):
+
+```
+adjusted NHLe = factor(league, season) × NHL points per team-game (ref) / NHL points per team-game (season)
+```
+
+`chl` is the OHL, WHL and QMJHL combined: the geometric mean of their factors, weighted by each
+league's crossover players. Other keys are any league in `data/nhle_factors.csv`.
+
+```python
+from era_adjust import nhle_chart
+nhle_chart.series(["khl", "shl"], ref=2025)   # league, season, factor, era_factor, nhle, ...
+```
+
 ## Caveats
 
 - Assists were awarded sparingly before the 1930s (0.4–0.6 assists per goal in the earliest seasons,
